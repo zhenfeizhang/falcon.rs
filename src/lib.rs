@@ -4,14 +4,21 @@
 #![allow(deref_nullptr)]
 
 use libc::c_void;
-use param::*;
 use rand_chacha::{
     rand_core::{RngCore, SeedableRng},
     ChaCha20Rng,
 };
 use zeroize::Zeroize;
 
+mod decoder;
 mod param;
+mod poly_mul;
+mod utils;
+
+use decoder::*;
+pub use param::*;
+use poly_mul::*;
+use utils::*;
 
 include!("./bindings.rs");
 
@@ -30,18 +37,17 @@ pub struct KeyPair {
     pub secret_key: SecretKey,
 }
 
-#[derive(Debug, Clone, Copy, PartialEq)]
-pub struct Shake256Rng([u64; 26]);
-
-impl Shake256Rng {
-    /// Initializing an RNG; sample the entropy
-    /// from local PRNG.
+// wrappers for unsafe functions
+impl shake256_context {
+    /// Initializing an RNG.
     pub fn init() -> Self {
-        let mut seed = [0u8; 32];
-        let mut rng = ChaCha20Rng::from_entropy();
-        rng.fill_bytes(&mut seed);
-
-        Self::init_with_seed(seed.as_ref())
+        let mut ctx = shake256_context {
+            opaque_contents: [0u64; 26],
+        };
+        unsafe {
+            shake256_init(&mut ctx as *mut shake256_context);
+        }
+        ctx
     }
 
     /// Initializing an RNG from seed.
@@ -56,7 +62,36 @@ impl Shake256Rng {
                 seed.len() as u64,
             );
         }
-        Self(ctx.opaque_contents)
+        ctx
+    }
+
+    /// Inject data to the RNG
+    pub fn inject(&mut self, data: &[u8]) {
+        unsafe {
+            shake256_inject(
+                self as *mut shake256_context,
+                data.as_ptr() as *const c_void,
+                data.len() as u64,
+            )
+        }
+    }
+
+    /// Finalize the RNG
+    pub fn finalize(&mut self) {
+        unsafe { shake256_flip(self as *mut shake256_context) }
+    }
+
+    /// Extract data from the RNG
+    pub fn extract(&mut self, len: usize) -> Vec<u8> {
+        let data = vec![0u8; len];
+        unsafe {
+            shake256_extract(
+                self as *mut shake256_context,
+                data.as_ptr() as *mut c_void,
+                len as u64,
+            );
+        }
+        data
     }
 }
 
@@ -72,11 +107,7 @@ impl KeyPair {
 
     /// generate a pair of public and secret keys from a seed
     pub fn keygen_with_seed(seed: &[u8], param: u32) -> Self {
-        let ctx = Shake256Rng::init_with_seed(seed);
-        let mut shake256_context = shake256_context {
-            opaque_contents: ctx.0,
-        };
-
+        let mut shake256_context = shake256_context::init_with_seed(seed);
         let mut pk = [0u8; PK_LEN];
         let mut sk = [0u8; SK_LEN];
         let mut buf = vec![0u8; KEYGEN_BUF_LEN];
@@ -137,11 +168,7 @@ impl SecretKey {
 
     /// Sign a message with a secret key and a seed.
     pub fn sign_with_seed(&self, seed: &[u8], message: &[u8]) -> Signature {
-        let ctx = Shake256Rng::init_with_seed(seed);
-        let mut shake256_context = shake256_context {
-            opaque_contents: ctx.0,
-        };
-
+        let mut shake256_context = shake256_context::init_with_seed(seed);
         let mut sig = [0u8; SIG_LEN];
         let sig_len = &mut (SIG_LEN as u64);
         let sig_type = 2;
@@ -189,6 +216,72 @@ impl PublicKey {
 
         res == 0
     }
+
+    // Unpack the public key into a vector of integers
+    // within the range of [0, 12289)
+    pub fn unpack(&self) -> [u16; 512] {
+        assert!(self.0[0] == 9);
+        mod_q_decode(self.0[1..].as_ref())
+    }
+
+    // using rust's native functions to check the validity of a signature
+    pub fn verify_rust_native(&self, message: &[u8], sig: &Signature) -> bool {
+        let pk = self.unpack();
+        let sig_u = sig.unpack();
+        let hm = hash_message(message, sig);
+
+        // compute v = hm - uh
+        let uh = poly_mul(&pk, &sig_u);
+
+        let mut v = [0i16; 512];
+        for (c, (&a, &b)) in v.iter_mut().zip(uh.iter().zip(hm.iter())) {
+            let c_i32 = (b as i32) + (a as i32);
+            *c = (c_i32 % 12289) as i16;
+
+            if *c >= 6144 {
+                *c -= 12289;
+            }
+
+            if *c < -6144 {
+                *c += 12289;
+            }
+        }
+        let l2_norm = l2_norm(&sig_u, &v);
+        l2_norm <= SIG_L2_BOUND
+    }
+}
+
+impl Signature {
+    // Unpack the signature into a vector of integers
+    // within the range of [0, 12289)
+    pub fn unpack(&self) -> [i16; 512] {
+        let res = comp_decode(self.0[41..].as_ref());
+        res
+    }
+}
+
+fn hash_message(message: &[u8], sig: &Signature) -> [u16; 512] {
+    // initialize and finalize the rng
+    let mut rng = shake256_context::init();
+    rng.inject(sig.0[1..41].as_ref());
+    rng.inject(message);
+    rng.finalize();
+
+    // extract the data from rng and build the output
+    let mut res = [0u16; 512];
+    let mut i = 0;
+    while i < 512 {
+        let output = rng.extract(2);
+        let mut coeff = (output[0] as u16) << 8 | (output[1] as u16);
+        if coeff < 61445 {
+            while coeff >= 12289 {
+                coeff -= 12289;
+            }
+            res[i] = coeff;
+            i += 1;
+        }
+    }
+    res
 }
 
 #[cfg(test)]
@@ -197,15 +290,13 @@ mod tests {
 
     #[test]
     fn test_prng() {
-        let _rng1 = Shake256Rng::init();
-        let _rng2 = Shake256Rng::init_with_seed("test seed".as_ref());
+        let _rng1 = shake256_context::init();
+        let _rng2 = shake256_context::init_with_seed("test seed".as_ref());
     }
 
     #[test]
     fn test_key_gen() {
         let keypair = KeyPair::keygen(9);
-        println!("{:?}", keypair);
-
         let pk2 = keypair.secret_key.make_public_key();
 
         assert_eq!(pk2, keypair.public_key);
@@ -216,9 +307,25 @@ mod tests {
         let keypair = KeyPair::keygen(9);
 
         let message = "testing message";
+        let message2 = "another testing message";
         let sig = keypair
             .secret_key
             .sign_with_seed("test seed".as_ref(), message.as_ref());
-        assert!(keypair.public_key.verify(message.as_ref(), &sig))
+        assert!(keypair.public_key.verify(message.as_ref(), &sig));
+        assert!(!keypair.public_key.verify(message2.as_ref(), &sig))
+    }
+
+    #[test]
+    fn test_unpacking() {
+        let keypair = KeyPair::keygen(9);
+        let message = "testing message";
+        let sig = keypair
+            .secret_key
+            .sign_with_seed("test seed".as_ref(), message.as_ref());
+
+        assert!(keypair.public_key.verify(message.as_ref(), &sig));
+        assert!(keypair
+            .public_key
+            .verify_rust_native(message.as_ref(), &sig));
     }
 }
