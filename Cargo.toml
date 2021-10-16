@@ -11,6 +11,9 @@ build = "build.rs"
 
 [dependencies]
 libc = "0.2.0"
+rand_chacha = { version = "0.3.1" }
+rand_core = { version = "0.6.3", features = [ "getrandom" ]}
+zeroize = "1.4.2"
 
 [build-dependencies]
 cc = { version = "1.0", features = ["parallel"] }

@@ -1,7 +1,6 @@
 extern crate cc;
 
 fn main() {
-
     let src = [
         "Falcon-impl-round3/codec.c",
         "Falcon-impl-round3/common.c",
@@ -20,7 +19,6 @@ fn main() {
         .files(src.iter())
         .include("Falcon-impl-round3")
         .flag("-Wno-unused-parameter");
-        
-    build.compile("falcon");
 
+    build.compile("falcon");
 }
