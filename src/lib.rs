@@ -2,6 +2,7 @@
 #![allow(non_camel_case_types)]
 #![allow(non_snake_case)]
 #![allow(deref_nullptr)]
+#![allow(dead_code)]
 
 use libc::c_void;
 use rand_chacha::{
@@ -14,13 +15,14 @@ mod decoder;
 mod param;
 mod poly_mul;
 mod utils;
+mod binder;
 
 use decoder::*;
 pub use param::*;
 use poly_mul::*;
 use utils::*;
+use binder::*;
 
-include!("./bindings.rs");
 
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct PublicKey(pub(crate) [u8; PK_LEN]);
