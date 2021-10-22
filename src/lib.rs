@@ -11,18 +11,17 @@ use rand_chacha::{
 };
 use zeroize::Zeroize;
 
+mod binder;
 mod decoder;
 mod param;
 mod poly_mul;
 mod utils;
-mod binder;
 
+use binder::*;
 use decoder::*;
 pub use param::*;
 use poly_mul::*;
 use utils::*;
-use binder::*;
-
 
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct PublicKey(pub(crate) [u8; PK_LEN]);
@@ -230,7 +229,7 @@ impl PublicKey {
     pub fn verify_rust_native(&self, message: &[u8], sig: &Signature) -> bool {
         let pk = self.unpack();
         let sig_u = sig.unpack();
-        let hm = hash_message(message, sig);
+        let hm = hash_message(message, sig.0[1..41].as_ref());
 
         // compute v = hm - uh
         let uh = poly_mul(&pk, &sig_u);
@@ -262,10 +261,10 @@ impl Signature {
     }
 }
 
-fn hash_message(message: &[u8], sig: &Signature) -> [u16; 512] {
+fn hash_message(message: &[u8], nonce: &[u8]) -> [u16; 512] {
     // initialize and finalize the rng
     let mut rng = shake256_context::init();
-    rng.inject(sig.0[1..41].as_ref());
+    rng.inject(nonce);
     rng.inject(message);
     rng.finalize();
 
