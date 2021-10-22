@@ -20,7 +20,7 @@ mod utils;
 use binder::*;
 use decoder::*;
 pub use param::*;
-use poly_mul::*;
+pub use poly_mul::*;
 use utils::*;
 
 #[derive(Debug, Clone, Copy, PartialEq)]
@@ -233,7 +233,6 @@ impl PublicKey {
 
         // compute v = hm - uh
         let uh = poly_mul(&pk, &sig_u);
-
         let mut v = [0i16; 512];
         for (c, (&a, &b)) in v.iter_mut().zip(uh.iter().zip(hm.iter())) {
             let c_i32 = (b as i32) + (a as i32);
@@ -253,15 +252,20 @@ impl PublicKey {
 }
 
 impl Signature {
-    // Unpack the signature into a vector of integers
-    // within the range of [0, 12289)
+    /// Unpack the signature into a vector of integers
+    /// within the range of [0, 12289)
     pub fn unpack(&self) -> [i16; 512] {
         let res = comp_decode(self.0[41..].as_ref());
         res
     }
+
+    /// return the nonce component of the signature
+    pub fn nonce(&self) -> &[u8] {
+        self.0[1..41].as_ref()
+    }
 }
 
-fn hash_message(message: &[u8], nonce: &[u8]) -> [u16; 512] {
+pub fn hash_message(message: &[u8], nonce: &[u8]) -> [u16; 512] {
     // initialize and finalize the rng
     let mut rng = shake256_context::init();
     rng.inject(nonce);

@@ -1,6 +1,6 @@
 // output = a(x) * b(x) mod x^512 +1 mod 12289
 // using school-book multiplications
-pub(crate) fn poly_mul(a: &[u16; 512], b: &[i16; 512]) -> [i16; 512] {
+pub fn poly_mul(a: &[u16; 512], b: &[i16; 512]) -> [i16; 512] {
     let mut buf = [0i32; 1024];
     let mut c = [0; 512];
     for i in 0..512 {
