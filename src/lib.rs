@@ -197,6 +197,7 @@ impl SecretKey {
 }
 
 impl PublicKey {
+    /// verification using C wrapper
     pub fn verify(&self, message: &[u8], sig: &Signature) -> bool {
         let sig_type = 2;
         let mut buf = [0u8; VERIFY_BUF_LEN];
@@ -225,14 +226,14 @@ impl PublicKey {
         mod_q_decode(self.0[1..].as_ref())
     }
 
-    // using rust's native functions to check the validity of a signature
-    pub fn verify_rust_native(&self, message: &[u8], sig: &Signature) -> bool {
+    // using rust's native schoolbook functions to check the validity of a signature
+    pub fn verify_rust_native_schoolbook(&self, message: &[u8], sig: &Signature) -> bool {
         let pk = self.unpack();
         let sig_u = sig.unpack();
         let hm = hash_message(message, sig.0[1..41].as_ref());
 
         // compute v = hm - uh
-        let uh = poly_mul(&pk, &sig_u);
+        let uh = schoolbook_mul(&pk, &sig_u);
         let mut v = [0i16; 512];
         for (c, (&a, &b)) in v.iter_mut().zip(uh.iter().zip(hm.iter())) {
             let c_i32 = (b as i32) + (a as i32);
@@ -246,6 +247,42 @@ impl PublicKey {
                 *c += 12289;
             }
         }
+        let l2_norm = l2_norm(&sig_u, &v);
+        l2_norm <= SIG_L2_BOUND
+    }
+
+    // using rust's native ntt functions to check the validity of a signature
+    pub fn verify_rust_native_ntt(&self, message: &[u8], sig: &Signature) -> bool {
+        let pk = self.unpack();
+        let sig_u = sig.unpack();
+        let hm = hash_message(message, sig.0[1..41].as_ref());
+
+        // move to ntt domain
+        let pk_u32: Vec<u32> = pk.iter().map(|x| *x as u32).collect();
+        let pk_ntt = ntt(&pk_u32);
+        let u_u32: Vec<u32> = sig_u
+            .iter()
+            .map(|x| ((*x + 12289) % 12289) as u32)
+            .collect();
+        let u_ntt = ntt(&u_u32);
+        let hm_u32: Vec<u32> = hm.iter().map(|x| *x as u32).collect();
+        let hm_ntt = ntt(&hm_u32);
+
+        // compute v = hm + uh
+        let mut v_ntt = [0u32; 512];
+        for i in 0..512 {
+            v_ntt[i] = (pk_ntt[i] * u_ntt[i] + hm_ntt[i]) % 12289;
+        }
+        let v_u32 = inv_ntt(v_ntt.as_ref());
+        let mut v = [0i16; 512];
+        for i in 0..512 {
+            v[i] = if v_u32[i] > 6144 {
+                v_u32[i] as i16 - 12289
+            } else {
+                v_u32[i] as i16
+            };
+        }
+
         let l2_norm = l2_norm(&sig_u, &v);
         l2_norm <= SIG_L2_BOUND
     }
@@ -331,6 +368,9 @@ mod tests {
         assert!(keypair.public_key.verify(message.as_ref(), &sig));
         assert!(keypair
             .public_key
-            .verify_rust_native(message.as_ref(), &sig));
+            .verify_rust_native_schoolbook(message.as_ref(), &sig));
+        assert!(keypair
+            .public_key
+            .verify_rust_native_ntt(message.as_ref(), &sig));
     }
 }

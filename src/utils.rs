@@ -8,6 +8,5 @@ pub(crate) fn l2_norm(input1: &[i16], input2: &[i16]) -> u32 {
     for e in input2.iter() {
         res += ((*e as i32) * (*e as i32)) as u64;
     }
-
     res as u32
 }
