@@ -21,6 +21,7 @@ use binder::*;
 use decoder::*;
 pub use param::*;
 pub use poly_mul::*;
+pub use binder::shake256_context;
 use utils::*;
 
 #[derive(Debug, Clone, Copy, PartialEq)]
