@@ -6,14 +6,14 @@ pub const MODULUS_MINUS_1_OVER_TWO: i16 = 6144;
 /// largest multiple of q that is smaller than 2^16
 pub const MODULUS_THRESHOLD: u16 = 61445;
 
-#[cfg(feature = "falcon-1024")]
+#[cfg(any(feature = "falcon-1024", feature = "default"))]
 pub use param1024::*;
 
-#[cfg(feature = "falcon-512")]
+#[cfg(all(feature = "falcon-512", default_feature = "false"))]
 pub use param512::*;
 
-#[cfg(feature = "falcon-512")]
 mod param512 {
+    #![allow(dead_code)]
     pub const LOG_N: usize = 9;
     pub const N: usize = 512;
     pub const ONE_OVER_N: u32 = 12265;
@@ -31,8 +31,8 @@ mod param512 {
     pub const SIG_L2_BOUND: u32 = 34034726;
 }
 
-#[cfg(feature = "falcon-1024")]
 mod param1024 {
+    #![allow(dead_code)]
     pub const LOG_N: usize = 10;
     pub const N: usize = 1024;
     pub const ONE_OVER_N: u32 = 12277;

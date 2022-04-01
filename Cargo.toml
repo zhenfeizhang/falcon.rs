@@ -21,6 +21,6 @@ pkg-config = "0.3"
 
 
 [features]
-default = [ "falcon-1024" ]
-falcon-512 = []
-falcon-1024 = []
+default = [ ]
+falcon-512 = [ ]
+falcon-1024 = [ ]
