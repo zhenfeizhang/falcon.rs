@@ -13,5 +13,5 @@ To build for falcon-1024
 
 To build for falcon-512
 ```
-    cargo build [--release] --no-default-features --features=falcon-512
+    cargo build [--release] --features=falcon-512 --no-default-features
 ```
