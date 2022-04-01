@@ -1,5 +1,7 @@
-pub(crate) fn mod_q_decode(input: &[u8]) -> [u16; 512] {
-    if input.len() != (512 * 14 + 7) / 8 {
+use crate::N;
+
+pub(crate) fn mod_q_decode(input: &[u8]) -> [u16; N] {
+    if input.len() != (N * 14 + 7) / 8 {
         panic!("incorrect input length")
     }
 
@@ -8,9 +10,9 @@ pub(crate) fn mod_q_decode(input: &[u8]) -> [u16; 512] {
     let mut acc_len = 0;
 
     let mut output_ptr = 0;
-    let mut output = [0u16; 512];
+    let mut output = [0u16; N];
 
-    while output_ptr < 512 {
+    while output_ptr < N {
         acc = (acc << 8) | (input[input_pt] as u32);
         input_pt += 1;
         acc_len += 8;
@@ -31,11 +33,11 @@ pub(crate) fn mod_q_decode(input: &[u8]) -> [u16; 512] {
     output
 }
 
-pub(crate) fn comp_decode(input: &[u8]) -> [i16; 512] {
+pub(crate) fn comp_decode(input: &[u8]) -> [i16; N] {
     let mut input_pt = 0;
     let mut acc = 0u32;
     let mut acc_len = 0;
-    let mut output = [0i16; 512];
+    let mut output = [0i16; N];
 
     for e in output.iter_mut() {
         /*

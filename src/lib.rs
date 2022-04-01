@@ -17,11 +17,11 @@ mod param;
 mod poly_mul;
 mod utils;
 
+pub use binder::shake256_context;
 use binder::*;
 use decoder::*;
 pub use param::*;
 pub use poly_mul::*;
-pub use binder::shake256_context;
 use utils::*;
 
 #[derive(Debug, Clone, Copy, PartialEq)]
@@ -99,16 +99,16 @@ impl shake256_context {
 
 impl KeyPair {
     /// generate a pair of public and secret keys
-    pub fn keygen(param: u32) -> Self {
+    pub fn keygen() -> Self {
         let mut seed = [0u8; 32];
         let mut rng = ChaCha20Rng::from_entropy();
         rng.fill_bytes(&mut seed);
 
-        Self::keygen_with_seed(seed.as_ref(), param)
+        Self::keygen_with_seed(seed.as_ref())
     }
 
     /// generate a pair of public and secret keys from a seed
-    pub fn keygen_with_seed(seed: &[u8], param: u32) -> Self {
+    pub fn keygen_with_seed(seed: &[u8]) -> Self {
         let mut shake256_context = shake256_context::init_with_seed(seed);
         let mut pk = [0u8; PK_LEN];
         let mut sk = [0u8; SK_LEN];
@@ -118,7 +118,7 @@ impl KeyPair {
             assert!(
                 falcon_keygen_make(
                     &mut shake256_context as *mut shake256_context,
-                    param,
+                    LOG_N as u32,
                     sk.as_mut_ptr() as *mut c_void,
                     SK_LEN as u64,
                     pk.as_mut_ptr() as *mut c_void,
@@ -221,9 +221,9 @@ impl PublicKey {
     }
 
     // Unpack the public key into a vector of integers
-    // within the range of [0, 12289)
-    pub fn unpack(&self) -> [u16; 512] {
-        assert!(self.0[0] == 9);
+    // within the range of [0, MODULUS)
+    pub fn unpack(&self) -> [u16; N] {
+        assert!(self.0[0] == LOG_N as u8);
         mod_q_decode(self.0[1..].as_ref())
     }
 
@@ -235,17 +235,17 @@ impl PublicKey {
 
         // compute v = hm - uh
         let uh = schoolbook_mul(&pk, &sig_u);
-        let mut v = [0i16; 512];
+        let mut v = [0i16; N];
         for (c, (&a, &b)) in v.iter_mut().zip(uh.iter().zip(hm.iter())) {
             let c_i32 = (b as i32) + (a as i32);
-            *c = (c_i32 % 12289) as i16;
+            *c = (c_i32 % MODULUS as i32) as i16;
 
             if *c >= 6144 {
-                *c -= 12289;
+                *c -= MODULUS as i16;
             }
 
             if *c < -6144 {
-                *c += 12289;
+                *c += MODULUS as i16;
             }
         }
         let l2_norm = l2_norm(&sig_u, &v);
@@ -263,22 +263,22 @@ impl PublicKey {
         let pk_ntt = ntt(&pk_u32);
         let u_u32: Vec<u32> = sig_u
             .iter()
-            .map(|x| ((*x + 12289) % 12289) as u32)
+            .map(|x| ((*x + MODULUS as i16) % MODULUS as i16) as u32)
             .collect();
         let u_ntt = ntt(&u_u32);
         let hm_u32: Vec<u32> = hm.iter().map(|x| *x as u32).collect();
         let hm_ntt = ntt(&hm_u32);
 
         // compute v = hm + uh
-        let mut v_ntt = [0u32; 512];
-        for i in 0..512 {
-            v_ntt[i] = (pk_ntt[i] * u_ntt[i] + hm_ntt[i]) % 12289;
+        let mut v_ntt = [0u32; N];
+        for i in 0..N {
+            v_ntt[i] = (pk_ntt[i] * u_ntt[i] + hm_ntt[i]) % MODULUS;
         }
         let v_u32 = inv_ntt(v_ntt.as_ref());
-        let mut v = [0i16; 512];
-        for i in 0..512 {
+        let mut v = [0i16; N];
+        for i in 0..N {
             v[i] = if v_u32[i] > 6144 {
-                v_u32[i] as i16 - 12289
+                v_u32[i] as i16 - MODULUS as i16
             } else {
                 v_u32[i] as i16
             };
@@ -291,8 +291,8 @@ impl PublicKey {
 
 impl Signature {
     /// Unpack the signature into a vector of integers
-    /// within the range of [0, 12289)
-    pub fn unpack(&self) -> [i16; 512] {
+    /// within the range of [0, MODULUS)
+    pub fn unpack(&self) -> [i16; N] {
         let res = comp_decode(self.0[41..].as_ref());
         res
     }
@@ -303,7 +303,7 @@ impl Signature {
     }
 }
 
-pub fn hash_message(message: &[u8], nonce: &[u8]) -> [u16; 512] {
+pub fn hash_message(message: &[u8], nonce: &[u8]) -> [u16; N] {
     // initialize and finalize the rng
     let mut rng = shake256_context::init();
     rng.inject(nonce);
@@ -311,14 +311,14 @@ pub fn hash_message(message: &[u8], nonce: &[u8]) -> [u16; 512] {
     rng.finalize();
 
     // extract the data from rng and build the output
-    let mut res = [0u16; 512];
+    let mut res = [0u16; N];
     let mut i = 0;
-    while i < 512 {
+    while i < N {
         let output = rng.extract(2);
         let mut coeff = (output[0] as u16) << 8 | (output[1] as u16);
         if coeff < 61445 {
-            while coeff >= 12289 {
-                coeff -= 12289;
+            while coeff >= MODULUS as u16 {
+                coeff -= MODULUS as u16;
             }
             res[i] = coeff;
             i += 1;
@@ -339,7 +339,7 @@ mod tests {
 
     #[test]
     fn test_key_gen() {
-        let keypair = KeyPair::keygen(9);
+        let keypair = KeyPair::keygen();
         let pk2 = keypair.secret_key.make_public_key();
 
         assert_eq!(pk2, keypair.public_key);
@@ -347,7 +347,7 @@ mod tests {
 
     #[test]
     fn test_sign_and_verify() {
-        let keypair = KeyPair::keygen(9);
+        let keypair = KeyPair::keygen();
 
         let message = "testing message";
         let message2 = "another testing message";
@@ -360,7 +360,7 @@ mod tests {
 
     #[test]
     fn test_unpacking() {
-        let keypair = KeyPair::keygen(9);
+        let keypair = KeyPair::keygen();
         let message = "testing message";
         let sig = keypair
             .secret_key
