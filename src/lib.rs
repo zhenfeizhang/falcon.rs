@@ -197,6 +197,12 @@ impl SecretKey {
 }
 
 impl PublicKey {
+
+    /// Expose the public key as a byte string
+    pub fn as_bytes(&self)->&[u8]{
+        self.0.as_ref()
+    }
+
     /// verification using C wrapper
     pub fn verify(&self, message: &[u8], sig: &Signature) -> bool {
         let sig_type = 2;
