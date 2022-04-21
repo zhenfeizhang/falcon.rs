@@ -131,17 +131,17 @@ impl Polynomial {
         rng.inject(message);
         rng.finalize();
 
+        // FIXME: give a better estimation of buffer size.
+        let buffer = rng.extract(N * 3);
+        let mut ctr = 0;
         // extract the data from rng and build the output
         let mut res = [0u16; N];
         let mut i = 0;
         while i < N {
-            let output = rng.extract(2);
-            let mut coeff = (output[0] as u16) << 8 | (output[1] as u16);
+            let coeff = (buffer[ctr] as u16) << 8 | (buffer[ctr + 1] as u16);
+            ctr += 2;
             if coeff < 61445 {
-                while coeff >= MODULUS as u16 {
-                    coeff -= MODULUS as u16;
-                }
-                res[i] = coeff;
+                res[i] = coeff % MODULUS;
                 i += 1;
             }
         }
