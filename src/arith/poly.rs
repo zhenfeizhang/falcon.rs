@@ -153,16 +153,16 @@ impl Polynomial {
         let mut res = 0;
         for e in self.0 {
             if e > MODULUS_MINUS_1_OVER_TWO as u16 {
-                res += ((MODULUS - e) * (MODULUS - e)) as u64
+                res += (MODULUS - e) as u64 * (MODULUS - e) as u64
             } else {
-                res += (e * e) as u64
+                res += e as u64 * e as u64
             }
         }
         res
     }
 
     /// Access the coefficients
-    pub fn coeff(&self)->&[u16; N] {
+    pub fn coeff(&self) -> &[u16; N] {
         &self.0
     }
 }

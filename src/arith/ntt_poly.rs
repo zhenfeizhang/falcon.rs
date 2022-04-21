@@ -103,7 +103,7 @@ impl NTTPolynomial {
     }
 
     /// Access the coefficients
-    pub fn coeff(&self)->&[u16; N] {
+    pub fn coeff(&self) -> &[u16; N] {
         &self.0
     }
 }

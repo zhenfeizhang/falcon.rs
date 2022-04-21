@@ -1,4 +1,4 @@
-use crate::{Polynomial, N, SIG_LEN};
+use crate::{Polynomial, MODULUS, N, SIG_LEN};
 
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct Signature(pub(crate) [u8; SIG_LEN]);
@@ -6,7 +6,7 @@ pub struct Signature(pub(crate) [u8; SIG_LEN]);
 impl Signature {
     /// Unpack the signature into a vector of integers
     /// within the range of [0, MODULUS)
-    pub fn unpack(&self) -> [i16; N] {
+    pub fn unpack(&self) -> [u16; N] {
         let res = comp_decode(self.0[41..].as_ref());
         res
     }
@@ -31,11 +31,11 @@ impl From<&Signature> for Polynomial {
     }
 }
 
-fn comp_decode(input: &[u8]) -> [i16; N] {
+fn comp_decode(input: &[u8]) -> [u16; N] {
     let mut input_pt = 0;
     let mut acc = 0u32;
     let mut acc_len = 0;
-    let mut output = [0i16; N];
+    let mut output = [0u16; N];
 
     for e in output.iter_mut() {
         /*
@@ -70,7 +70,11 @@ fn comp_decode(input: &[u8]) -> [i16; N] {
         if s != 0 && m == 0 {
             panic!("incorrect remaining data")
         }
-        *e = if s == 0 { -(m as i16) } else { m as i16 };
+        *e = if s != 0 {
+            (MODULUS as u32 - m) as u16
+        } else {
+            m as u16
+        };
     }
 
     /*
