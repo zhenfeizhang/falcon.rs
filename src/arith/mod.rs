@@ -2,13 +2,12 @@ mod ntt_poly;
 mod param;
 mod poly;
 
-pub use ntt_poly::NTTPolynomial;
-pub use poly::Polynomial;
-
 use crate::{LOG_N, MODULUS, N, ONE_OVER_N};
-use param::NTT_TABLE;
 
-use self::param::INV_NTT_TABLE;
+pub use ntt_poly::NTTPolynomial;
+pub use param::INV_NTT_TABLE;
+pub use param::NTT_TABLE;
+pub use poly::Polynomial;
 
 /// convert a polynomial into its NTT form
 pub(crate) fn ntt(input: &Polynomial) -> NTTPolynomial {
