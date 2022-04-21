@@ -1,39 +1,40 @@
-use crate::N;
+use crate::{Polynomial, N, SIG_LEN};
 
-pub(crate) fn mod_q_decode(input: &[u8]) -> [u16; N] {
-    if input.len() != (N * 14 + 7) / 8 {
-        panic!("incorrect input length")
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct Signature(pub(crate) [u8; SIG_LEN]);
+
+impl Signature {
+    /// Unpack the signature into a vector of integers
+    /// within the range of [0, MODULUS)
+    pub fn unpack(&self) -> [i16; N] {
+        let res = comp_decode(self.0[41..].as_ref());
+        res
     }
 
-    let mut input_pt = 0;
-    let mut acc = 0u32;
-    let mut acc_len = 0;
-
-    let mut output_ptr = 0;
-    let mut output = [0u16; N];
-
-    while output_ptr < N {
-        acc = (acc << 8) | (input[input_pt] as u32);
-        input_pt += 1;
-        acc_len += 8;
-
-        if acc_len >= 14 {
-            acc_len -= 14;
-            let w = (acc >> acc_len) & 0x3FFF;
-            assert!(w < 12289, "incorrect input: {}", w);
-            output[output_ptr] = w as u16;
-            output_ptr += 1;
-        }
+    /// return the nonce component of the signature
+    pub fn nonce(&self) -> &[u8] {
+        self.0[1..41].as_ref()
     }
-
-    if (acc & ((1u32 << acc_len) - 1)) != 0 {
-        panic!("incorrect remaining data")
-    }
-
-    output
 }
 
-pub(crate) fn comp_decode(input: &[u8]) -> [i16; N] {
+impl From<&Signature> for Polynomial {
+    fn from(sig: &Signature) -> Self {
+        let mut res = Self::default();
+        res.0.copy_from_slice(
+            sig.unpack()
+                .iter()
+                .map(|x| *x as u16)
+                .collect::<Vec<u16>>()
+                .as_ref(),
+        );
+        res
+    }
+}
+
+
+
+
+fn comp_decode(input: &[u8]) -> [i16; N] {
     let mut input_pt = 0;
     let mut acc = 0u32;
     let mut acc_len = 0;

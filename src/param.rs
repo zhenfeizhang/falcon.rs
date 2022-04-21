@@ -1,10 +1,13 @@
-pub const MODULUS: u32 = 12289;
+pub const MODULUS: u16 = 12289;
 
 // (q-1)/2
 pub const MODULUS_MINUS_1_OVER_TWO: i16 = 6144;
 
 /// largest multiple of q that is smaller than 2^16
 pub const MODULUS_THRESHOLD: u16 = 61445;
+
+// the largest multiple of q that is smaller than 2^32
+pub const U32_SAMPLE_THRESHOLD: u32 = 4294956344;
 
 #[cfg(feature = "falcon-1024")]
 pub use param1024::*;
@@ -28,7 +31,7 @@ mod param512 {
     pub const VERIFY_BUF_LEN: usize = 4097;
 
     // pub const SIG_COEFF_BIT_LEN: usize = 12;
-    pub const SIG_L2_BOUND: u32 = 34034726;
+    pub const SIG_L2_BOUND: u64 = 34034726;
 }
 
 mod param1024 {
@@ -47,5 +50,5 @@ mod param1024 {
     pub const VERIFY_BUF_LEN: usize = 8193;
 
     // pub const SIG_COEFF_BIT_LEN: usize = 12;
-    pub const SIG_L2_BOUND: u32 = 70265242;
+    pub const SIG_L2_BOUND: u64 = 70265242;
 }
