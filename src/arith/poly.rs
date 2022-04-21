@@ -160,6 +160,11 @@ impl Polynomial {
         }
         res
     }
+
+    /// Access the coefficients
+    pub fn coeff(&self)->&[u16; N] {
+        &self.0
+    }
 }
 
 #[cfg(test)]
