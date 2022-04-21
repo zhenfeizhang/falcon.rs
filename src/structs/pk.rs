@@ -53,7 +53,7 @@ impl PublicKey {
         let uh = sig_u * pk;
         let v = hm - uh;
 
-        let l2_norm = sig_u.l2_norm()+v.l2_norm();
+        let l2_norm = sig_u.l2_norm() + v.l2_norm();
         l2_norm <= SIG_L2_BOUND
     }
 }
@@ -69,8 +69,6 @@ impl From<&PublicKey> for NTTPolynomial {
         (&Polynomial(pk.unpack())).into()
     }
 }
-
-
 
 fn mod_q_decode(input: &[u8]) -> [u16; N] {
     if input.len() != (N * 14 + 7) / 8 {

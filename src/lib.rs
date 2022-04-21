@@ -3,13 +3,13 @@
 #![allow(non_snake_case)]
 #![allow(deref_nullptr)]
 
+mod arith;
 mod binder;
 mod param;
-mod arith;
 mod shake;
 mod structs;
 
+pub use arith::*;
 use binder::*;
 pub use param::*;
-pub use arith::*;
 pub use structs::*;

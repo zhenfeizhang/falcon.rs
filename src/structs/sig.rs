@@ -31,9 +31,6 @@ impl From<&Signature> for Polynomial {
     }
 }
 
-
-
-
 fn comp_decode(input: &[u8]) -> [i16; N] {
     let mut input_pt = 0;
     let mut acc = 0u32;

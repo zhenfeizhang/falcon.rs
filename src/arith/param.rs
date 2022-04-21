@@ -1,7 +1,10 @@
 /// NTT forward table where the i-th element is g^rev(i) where
 /// - g = 7 is a primitive root
-/// - rev(i) is the reverse bit decomposition of i, i.e., 0   ->  0 1   ->  100
-///   0000 2   ->  010 0000 3   ->  110 0000   ...
+/// - rev(i) is the reverse bit decomposition of i, i.e.,
+///   0   ->  0
+///   1   ->  100 0000
+///   2   ->  010 0000
+///   3   ->  110 0000   ...
 pub const NTT_TABLE: [u16; 1024] = [
     1, 10810, 7143, 4043, 10984, 722, 5736, 8155, 3542, 8785, 9744, 3621, 10643, 1212, 3195, 5860,
     7468, 2639, 9664, 11340, 11726, 9314, 9283, 9545, 5728, 7698, 5023, 5828, 8961, 6512, 7311,
@@ -75,8 +78,11 @@ pub const NTT_TABLE: [u16; 1024] = [
 /// NTT reverse table where the i-th element is (1/g)^rev(i) where
 /// - g = 7 is a primitive root
 /// - 1/g = 8778
-/// - rev(i) is the reverse bit decomposition of i, i.e., 0   ->  0 1   ->  100
-///   0000 2   ->  010 0000 3   ->  110 0000   ...
+/// - rev(i) is the reverse bit decomposition of i, i.e.,
+///   0   ->  0
+///   1   ->  100 0000
+///   2   ->  010 0000
+///   3   ->  110 0000   ...
 pub const INV_NTT_TABLE: [u16; 1024] = [
     1, 1479, 8246, 5146, 4134, 6553, 11567, 1305, 6429, 9094, 11077, 1646, 8668, 2545, 3504, 8747,
     10938, 4978, 5777, 3328, 6461, 7266, 4591, 6561, 2744, 3006, 2975, 563, 949, 2625, 9650, 4821,
