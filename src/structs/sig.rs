@@ -1,4 +1,4 @@
-use crate::{Polynomial, MODULUS, N, SIG_LEN};
+use crate::{DualPolynomial, Polynomial, MODULUS, MODULUS_MINUS_1_OVER_TWO, N, SIG_LEN};
 
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct Signature(pub(crate) [u8; SIG_LEN]);
@@ -27,6 +27,22 @@ impl From<&Signature> for Polynomial {
                 .collect::<Vec<u16>>()
                 .as_ref(),
         );
+        res
+    }
+}
+
+impl From<&Signature> for DualPolynomial {
+    fn from(sig: &Signature) -> Self {
+        let mut res = Self::default();
+        let sig_poly = Polynomial::from(sig);
+        for i in 0..N {
+            if sig_poly.coeff()[i] < MODULUS_MINUS_1_OVER_TWO {
+                res.pos.0[i] = sig_poly.coeff()[i]
+            } else {
+                res.neg.0[i] = MODULUS - sig_poly.coeff()[i]
+            }
+        }
+
         res
     }
 }

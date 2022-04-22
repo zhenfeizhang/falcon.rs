@@ -1,9 +1,13 @@
+mod dual_ntt_poly;
+mod dual_poly;
 mod ntt_poly;
 mod param;
 mod poly;
 
 use crate::{LOG_N, MODULUS, N, ONE_OVER_N};
 
+pub use dual_ntt_poly::DualNTTPolynomial;
+pub use dual_poly::DualPolynomial;
 pub use ntt_poly::NTTPolynomial;
 pub use param::INV_NTT_TABLE;
 pub use param::NTT_TABLE;

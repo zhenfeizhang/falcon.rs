@@ -1,7 +1,7 @@
 pub const MODULUS: u16 = 12289;
 
 // (q-1)/2
-pub const MODULUS_MINUS_1_OVER_TWO: i16 = 6144;
+pub const MODULUS_MINUS_1_OVER_TWO: u16 = 6144;
 
 /// largest multiple of q that is smaller than 2^16
 pub const MODULUS_THRESHOLD: u16 = 61445;

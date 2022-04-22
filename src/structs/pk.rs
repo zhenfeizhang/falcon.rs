@@ -1,6 +1,7 @@
 use super::sig::Signature;
 use crate::binder::*;
 use crate::param::*;
+use crate::DualPolynomial;
 use crate::NTTPolynomial;
 use crate::Polynomial;
 use libc::c_void;
@@ -52,6 +53,22 @@ impl PublicKey {
         // compute v = hm - uh
         let uh = sig_u * pk;
         let v = hm - uh;
+
+        let l2_norm = sig_u.l2_norm() + v.l2_norm();
+        l2_norm <= SIG_L2_BOUND
+    }
+
+    // check the validity of a signature via the parsed method
+    // this is slow; but will improve circuit complexity for ZKP
+    pub fn verify_parsed_sig(&self, message: &[u8], sig: &Signature) -> bool {
+        let pk: Polynomial = self.into();
+        let sig_u: DualPolynomial = sig.into();
+        let hm = Polynomial::from_hash_of_message(message, sig.0[1..41].as_ref());
+
+        // compute v = hm - uh
+        let uh_pos = sig_u.pos * pk;
+        let uh_neg = sig_u.neg * pk;
+        let v = hm - uh_pos + uh_neg;
 
         let l2_norm = sig_u.l2_norm() + v.l2_norm();
         l2_norm <= SIG_L2_BOUND

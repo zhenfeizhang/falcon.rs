@@ -30,18 +30,8 @@ mod tests {
             .secret_key
             .sign_with_seed("test seed".as_ref(), message.as_ref());
         assert!(keypair.public_key.verify(message.as_ref(), &sig));
-        assert!(!keypair.public_key.verify(message2.as_ref(), &sig))
-    }
-
-    #[test]
-    fn test_unpacking() {
-        let keypair = KeyPair::keygen();
-        let message = "testing message";
-        let sig = keypair
-            .secret_key
-            .sign_with_seed("test seed".as_ref(), message.as_ref());
-
-        assert!(keypair.public_key.verify(message.as_ref(), &sig));
         assert!(keypair.public_key.verify_rust(message.as_ref(), &sig));
+        assert!(keypair.public_key.verify_parsed_sig(message.as_ref(), &sig));
+        assert!(!keypair.public_key.verify(message2.as_ref(), &sig))
     }
 }
