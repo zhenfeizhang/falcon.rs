@@ -1,9 +1,5 @@
 use super::sig::Signature;
-use crate::binder::*;
-use crate::param::*;
-use crate::DualPolynomial;
-use crate::NTTPolynomial;
-use crate::Polynomial;
+use crate::{binder::*, param::*, DualPolynomial, NTTPolynomial, Polynomial};
 use libc::c_void;
 
 #[derive(Debug, Clone, Copy, PartialEq)]

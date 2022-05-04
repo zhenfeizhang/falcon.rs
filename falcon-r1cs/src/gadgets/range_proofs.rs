@@ -632,8 +632,9 @@ mod tests {
         // {
         //     let cs = ConstraintSystem::<Fq>::new_ref();
         //     let a = Fq::from(42);
-        //     let a_var = FpVar::<Fq>::new_witness(cs.clone(), || Ok(a)).unwrap();
-        //     let b_var = FpVar::<Fq>::new_constant(cs.clone(), Fq::from(12289)).unwrap();
+        //     let a_var = FpVar::<Fq>::new_witness(cs.clone(), ||
+        // Ok(a)).unwrap();     let b_var =
+        // FpVar::<Fq>::new_constant(cs.clone(), Fq::from(12289)).unwrap();
         //     a_var
         //         .enforce_cmp(&b_var, std::cmp::Ordering::Less, false)
         //         .unwrap();

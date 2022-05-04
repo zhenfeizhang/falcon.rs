@@ -1,12 +1,8 @@
-use super::inv_ntt;
-use super::NTTPolynomial;
-use crate::shake256_context;
-use crate::MODULUS_MINUS_1_OVER_TWO;
-use crate::{MODULUS, N, U32_SAMPLE_THRESHOLD};
+use super::{inv_ntt, NTTPolynomial};
+use crate::{shake256_context, MODULUS, MODULUS_MINUS_1_OVER_TWO, N, U32_SAMPLE_THRESHOLD};
 use rand_chacha::ChaCha20Rng;
 use rand_core::{CryptoRng, RngCore, SeedableRng};
-use std::ops::Sub;
-use std::ops::{Add, Mul};
+use std::ops::{Add, Mul, Sub};
 
 #[derive(Debug, Copy, Clone, PartialEq)]
 pub struct Polynomial(pub(crate) [u16; N]);

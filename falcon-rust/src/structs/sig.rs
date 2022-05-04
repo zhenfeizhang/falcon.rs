@@ -54,10 +54,8 @@ fn comp_decode(input: &[u8]) -> [u16; N] {
     let mut output = [0u16; N];
 
     for e in output.iter_mut() {
-        /*
-         * Get next eight bits: sign and low seven bits of the
-         * absolute value.
-         */
+        // Get next eight bits: sign and low seven bits of the
+        // absolute value.
 
         acc = (acc << 8) | (input[input_pt] as u32);
         input_pt += 1;
@@ -65,9 +63,7 @@ fn comp_decode(input: &[u8]) -> [u16; N] {
         let s = b & 128;
         let mut m = b & 127;
 
-        /*
-         * Get next bits until a 1 is reached.
-         */
+        // Get next bits until a 1 is reached.
 
         loop {
             if acc_len == 0 {
@@ -93,9 +89,7 @@ fn comp_decode(input: &[u8]) -> [u16; N] {
         };
     }
 
-    /*
-     * Unused bits in the last byte must be zero.
-     */
+    // Unused bits in the last byte must be zero.
     if (acc & ((1 << acc_len) - 1)) != 0 {
         panic!("incorrect remaining data")
     }

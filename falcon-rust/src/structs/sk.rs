@@ -1,5 +1,4 @@
-use crate::binder::*;
-use crate::param::*;
+use crate::{binder::*, param::*};
 use libc::c_void;
 use rand_chacha::{
     rand_core::{RngCore, SeedableRng},
@@ -7,8 +6,7 @@ use rand_chacha::{
 };
 use zeroize::Zeroize;
 
-use super::PublicKey;
-use super::Signature;
+use super::{PublicKey, Signature};
 
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct SecretKey(pub(crate) [u8; SK_LEN]);

@@ -2,11 +2,8 @@
 extern crate criterion;
 
 use criterion::Criterion;
-use falcon_rust::KeyPair;
-use falcon_rust::NTTPolynomial;
-use falcon_rust::Polynomial;
-use rand_chacha::rand_core::SeedableRng;
-use rand_chacha::ChaCha20Rng;
+use falcon_rust::{KeyPair, NTTPolynomial, Polynomial};
+use rand_chacha::{rand_core::SeedableRng, ChaCha20Rng};
 
 criterion_main!(bench);
 criterion_group!(bench, bench_falcon, bench_ntt,);

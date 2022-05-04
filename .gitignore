@@ -1,5 +1,4 @@
 /target
-Cargo.lock
 *.o
 /Falcon-impl-round3/libfalcon.a
 /Falcon-impl-round3/speed
