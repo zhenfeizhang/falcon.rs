@@ -1,17 +1,7 @@
-Falcon-rust
+Falcon signature and its ZKP extensions
 ------
 
-This is a rust wrapper of falcon signature scheme, submitted to NIST PQC competition.
-It supports both falcon-512 and falcon-1024 parameter sets. The default is set to falcon-1024.
-
-
-To build for falcon-1024
-```
-    cargo build [--release]
-```
-
-
-To build for falcon-512
-```
-    cargo build [--release] --features=falcon-512 --no-default-features
-```
+This repo consists of the following components:
+- falcon-rust: a rust wrapper of falcon signature scheme
+- falcon-r1cs: an R1CS implementation for falcon verification circuit with Arkwork's backend
+- falcon-plonk: a plonk implementation for falcon verification circuit with Jellyfish's backend

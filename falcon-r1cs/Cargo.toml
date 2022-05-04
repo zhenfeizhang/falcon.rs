@@ -1,0 +1,32 @@
+[package]
+name = "falcon-r1cs"
+description = "A crate to generate the R1CS circuit for Falcon signature verifications."
+version = "0.1.0"
+authors = [ "Zhenfei Zhang <zhenfei.zhang@hotmail.com>" ]
+edition = "2018"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+falcon-rust = { path = "../falcon-rust", default-features = false }
+
+# Arkworks dependencies
+ark-ed-on-bls12-381 = { version = "0.3.0", default-features = false, features = ["r1cs"] }
+ark-ff = { version = "0.3.0", default-features = false, features = [ "parallel" ] }
+ark-groth16 = { version = "0.3.0", default-features = false, features = [ "r1cs", "parallel" ] }
+ark-r1cs-std = { version = "0.3.1", default-features = false }
+ark-relations = { version = "0.3.0", default-features = false }
+ark-std = { version = "0.3.0", default-features = false }
+
+num-bigint = { version = "0.4", default-features = false}
+
+[dev-dependencies]
+ark-snark = { version = "0.3.0", default-features = false }
+rand_chacha = { version = "0.3.0", default-features = false }
+ark-bls12-381 = { version = "0.3.0", default-features = false, features = ["curve"] }
+
+[features]
+default = [ "falcon-1024", "parallel" ]
+falcon-512 = [ "falcon-rust/falcon-512" ]
+falcon-1024 = [ "falcon-rust/falcon-1024" ]
+parallel = [ ]

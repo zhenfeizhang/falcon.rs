@@ -1,32 +1,8 @@
-[package]
-name = "falcon-rust"
-description = "A rust wrapper for falcon signature scheme"
-version = "0.1.0"
-authors = [ "Zhenfei Zhang <zhenfei.zhang@hotmail.com>" ]
-edition = "2018"
-links = "falcon"
-build = "build.rs"
 
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
-
-[dependencies]
-libc = "0.2.0"
-rand_chacha = { version = "0.3.1" }
-rand_core = { version = "0.6.3", features = [ "getrandom" ]}
-zeroize = "1.4.2"
-bencher = "0.1.5"
-criterion = "0.3.4"
-
-[build-dependencies]
-cc = { version = "1.0", features = ["parallel"] }
-pkg-config = "0.3"
-
-[[bench]]
-name = "bench"
-harness = false
-
-[features]
-default = [ "falcon-1024" ]
-falcon-512 = [ ]
-falcon-1024 = [ ]
-
+[workspace]
+members = [
+    "falcon-aggregate-sig",
+    "falcon-r1cs",
+    "falcon-plonk",
+    "falcon-rust",
+]
