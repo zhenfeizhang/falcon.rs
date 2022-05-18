@@ -1,4 +1,5 @@
 mod arithmetics;
+mod dual_poly;
 mod ntt_poly_var;
 mod poly_var;
 mod range_proof;
@@ -14,6 +15,12 @@ pub use range_proof::*;
 pub struct PolyVar<F: PrimeField> {
     pub coeff: Vec<Variable>,
     phantom: PhantomData<F>,
+}
+
+#[derive(Debug, Clone)]
+pub struct DualPolyVar<F: PrimeField> {
+    pub pos: PolyVar<F>,
+    pub neg: PolyVar<F>,
 }
 
 #[derive(Debug, Clone)]

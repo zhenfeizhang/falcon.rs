@@ -51,7 +51,7 @@ impl<F: PrimeField> NTTPolyVar<F> {
     }
 
     /// The circuit to convert a poly into its NTT form
-    /// Cost 88064 constraints.
+    /// Cost 11266 constraints.
     /// Inputs:
     /// - cs: constraint system
     /// - input: the wires of the input polynomial
@@ -115,9 +115,8 @@ impl<F: PrimeField> NTTPolyVar<F> {
             t = ht;
         }
 
-        // perform a final mod reduction to make the
-        // output into the right range
-        // this is the only place that we need non-native circuits
+        // perform a final mod reduction 
+        // Defer the range check of the output to caller
         for e in output.iter_mut() {
             *e = mod_q(cs, e, MODULUS)?;
         }

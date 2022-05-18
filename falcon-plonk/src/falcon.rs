@@ -1,13 +1,12 @@
 use ark_ff::PrimeField;
-use falcon_rust::{NTTPolynomial, Polynomial, PublicKey, Signature, LOG_N, MODULUS, N};
+use falcon_rust::{
+    DualPolynomial, NTTPolynomial, Polynomial, PublicKey, Signature, LOG_N, MODULUS, N,
+};
 use jf_plonk::{
     circuit::{Circuit, PlonkCircuit},
     errors::PlonkError,
 };
-
-use crate::poly::{
-    enforce_less_than_norm_bound, enforce_less_than_q, l2_norm_var, mod_q, NTTPolyVar, PolyVar,
-};
+use crate::poly::{enforce_leq_765,  mod_q, DualPolyVar, NTTPolyVar};
 
 #[derive(Clone, Debug)]
 pub struct FalconNTTVerificationWitness {
@@ -21,6 +20,8 @@ impl FalconNTTVerificationWitness {
         Self { pk, msg, sig }
     }
 
+
+    /// Falcon verification circuit. TOTAL cost: 50178
     pub fn verification_circuit<F: PrimeField>(
         &self,
         cs: &mut PlonkCircuit<F>,
@@ -29,6 +30,7 @@ impl FalconNTTVerificationWitness {
         let cs_count = cs.num_gates();
 
         let sig_poly: Polynomial = (&self.sig).into();
+        let sig_dual_poly: DualPolynomial = (&sig_poly).into();
         let pk_poly: Polynomial = (&self.pk).into();
 
         // the [q, 2*q^2, 4 * q^3, ..., 2^9 * q^10] constant wires
@@ -45,6 +47,7 @@ impl FalconNTTVerificationWitness {
         // compute v = hm - uh and lift it to positives
         let uh = sig_poly * pk_poly;
         let v = hm - uh;
+        let v_dual_poly: DualPolynomial = (&v).into();
 
         let pk_ntt = NTTPolynomial::from(&pk_poly);
 
@@ -53,8 +56,9 @@ impl FalconNTTVerificationWitness {
         // ========================================
         // signature, over Z
         //  a private input to the circuit; a range proof will be done later
-        let sig_poly_vars = PolyVar::<F>::alloc_vars(cs, &sig_poly)?;
-
+        let sig_dual_poly_vars = DualPolyVar::<F>::alloc_vars(cs, &sig_dual_poly)?;
+        let sig_poly_vars = sig_dual_poly_vars.to_poly_var(cs)?;
+        
         // pk, in NTT domain
         //  a public input to the circuit; do not need range proof
         let pk_ntt_vars = NTTPolyVar::<F>::alloc_public_vars(cs, &pk_ntt)?;
@@ -65,13 +69,8 @@ impl FalconNTTVerificationWitness {
 
         // v := hm - sig * pk, over Z
         //  a private input to the circuit; require a range proof
-        let v_vars = PolyVar::alloc_vars(cs, &v)?;
-
-        for e in v_vars.coeff() {
-            // ensure all the v inputs are smaller than MODULUS
-            // v will need to be kept secret
-            enforce_less_than_q(cs, &e)?;
-        }
+        let v_dual_poly_vars = DualPolyVar::alloc_vars(cs, &v_dual_poly)?;
+        let v_poly_vars = v_dual_poly_vars.to_poly_var(cs)?;
 
         // ========================================
         // proving v = hm + sig * pk mod MODULUS
@@ -84,12 +83,10 @@ impl FalconNTTVerificationWitness {
         //  sig_ntt_vars = ntt_circuit(sig_vars)
         //  v_ntt_vars = ntt_circuit(v_vars)
         let sig_ntt_vars = NTTPolyVar::ntt_circuit(cs, &sig_poly_vars, &const_q_power)?;
-        let v_ntt_vars = NTTPolyVar::ntt_circuit(cs, &v_vars, &const_q_power)?;
-
+        let v_ntt_vars = NTTPolyVar::ntt_circuit(cs, &v_poly_vars, &const_q_power)?;
         // second, prove the equation holds in the ntt domain
         for i in 0..N {
             // if i < 5 {
-            //     println!("{} {}", i, cs.num_gates());
             //     println!(
             //         "{:?} {:?} {:?} {:?}",
             //         cs.witness(v_ntt_vars.coeff()[i])?.into_repr(),
@@ -113,11 +110,20 @@ impl FalconNTTVerificationWitness {
         }
 
         // ========================================
-        // proving l2_norm(v | sig) < 34034726
+        // proving infinity_norm(v | sig) <= 765
         // ========================================
-        let l2_norm_var = l2_norm_var(cs, &[v_vars.coeff(), sig_poly_vars.coeff()].concat())?;
-
-        enforce_less_than_norm_bound(cs, &l2_norm_var)?;
+        for e in sig_dual_poly_vars.pos.coeff.iter() {
+            enforce_leq_765(cs, e)?;
+        }
+        for e in sig_dual_poly_vars.neg.coeff.iter() {
+            enforce_leq_765(cs, e)?;
+        }
+        for e in v_dual_poly_vars.pos.coeff.iter() {
+            enforce_leq_765(cs, e)?;
+        }
+        for e in v_dual_poly_vars.neg.coeff.iter() {
+            enforce_leq_765(cs, e)?;
+        }
 
         #[cfg(feature = "print-trace")]
         println!(
@@ -139,7 +145,7 @@ mod tests {
     const REPEAT: usize = 10;
 
     #[test]
-    fn test_ntt_verification_r1cs() -> Result<(), PlonkError> {
+    fn test_ntt_verification_plonk() -> Result<(), PlonkError> {
         for _ in 0..REPEAT {
             let keypair = KeyPair::keygen();
             let message = "testing message".as_bytes();
@@ -181,6 +187,7 @@ mod tests {
                 public_inputs.push(Fq::from(e));
             }
 
+            println!("{:?}", cs.check_circuit_satisfiability(&public_inputs));
             assert!(cs.check_circuit_satisfiability(&public_inputs).is_ok());
         }
         Ok(())

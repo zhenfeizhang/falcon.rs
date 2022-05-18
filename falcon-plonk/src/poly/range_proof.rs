@@ -81,7 +81,7 @@ pub fn enforce_leq_765<F: PrimeField>(
     let a2_var = cs.create_variable(F::from(a2))?;
     let a3_var = cs.create_variable(F::from(a3))?;
 
-    // ensure a1, a2, a3 <= 256
+    // ensure a1, a2, a3 < 256
     cs.range_gate(a1_var, 8)?;
     cs.range_gate(a2_var, 8)?;
     cs.range_gate(a3_var, 8)?;
@@ -100,56 +100,117 @@ pub fn enforce_leq_765<F: PrimeField>(
     res
 }
 
-// compute the l2 norm of polynomial a where a's coefficients
-// are positive between [0, 12289).
-// We need to firstly lift it to [-6144, 6144) and then
-// compute the norm.
-pub fn l2_norm_var<F: PrimeField>(
-    cs: &mut PlonkCircuit<F>,
-    a: &[Variable],
-) -> Result<Variable, PlonkError> {
-    // let mut res = FpVar::<F>::conditionally_select(
-    //     &is_less_than_6144(cs.clone(), &input[0])?,
-    //     &input[0],
-    //     &(modulus_var - &input[0]),
-    // )?;
-    // res = &res * &res;
-    // for e in input.iter().skip(1) {
-    //     let tmp = FpVar::<F>::conditionally_select(
-    //         &is_less_than_6144(cs.clone(), e)?,
-    //         e,
-    //         &(modulus_var - e),
-    //     )?;
-    //     res += &tmp * &tmp
-    // }
-    todo!()
-    // Ok(res)
-}
+// /// Return a boolean variable indicating if a < 1020
+// pub fn is_less_than_1020<F: PrimeField>(
+//     cs: &mut PlonkCircuit<F>,
+//     a: &Variable,
+// ) -> Result<Variable, PlonkError> {
+//     #[cfg(feature = "print-trace")]
+//     let cs_count = cs.num_gates();
 
-pub fn enforce_less_than_norm_bound<F: PrimeField>(
-    cs: &mut PlonkCircuit<F>,
-    a: &Variable,
-) -> Result<(), PlonkError> {
-    #[cfg(feature = "falcon-512")]
-    enforce_less_than_norm_bound_512(cs, a)?;
-    #[cfg(feature = "falcon-1024")]
-    enforce_less_than_norm_bound_1024(cs, a)?;
+//     if cs.range_bit_len()? != 8 {
+//         return Err(PlonkError::InvalidParameters(format!(
+//             "range bit len {} is not 8",
+//             cs.range_bit_len()?
+//         )));
+//     }
 
-    Ok(())
-}
+//     // decompose a = a1 + a2 + a3 + a4
+//     // ensure a1, a2, a3, a4 <= 255
+//     let a_val = cs.witness(*a)?;
+//     let a_int: F::BigInt = a_val.into();
+//     let a_u64 = a_int.as_ref()[0];
+//     let (a1, a2, a3, a4) = {
+//         if a_u64 > 765 {
+//             (255, 255, 255, a_u64 - 765)
+//         } else if a_u64 > 510 {
+//             (255, 255, a_u64 - 510, 0)
+//         } else if a_u64 > 255 {
+//             (255, a_u64 - 255, 0, 0)
+//         } else {
+//             (a_u64, 0, 0, 0)
+//         }
+//     };
+//     let a1_var = cs.create_variable(F::from(a1))?;
+//     let a2_var = cs.create_variable(F::from(a2))?;
+//     let a3_var = cs.create_variable(F::from(a3))?;
+//     let a4_var = cs.create_variable(F::from(a4))?;
 
-/// Constraint that the witness of a is smaller than 34034726
-/// Cost: XX constraints.
-/// (This improves the range proof of 1264 constraints as in Arkworks.)    
-#[cfg(feature = "falcon-1024")]
-fn enforce_less_than_norm_bound_1024<F: PrimeField>(
-    cs: &mut PlonkCircuit<F>,
-    a: &Variable,
-) -> Result<(), PlonkError> {
-    // 34034726 = 2 * (2^8)^3 + 7 * (2^8)^2 + 84 * 2^8 + 38
+//     // // check a1, a2, a3, a4 < 256
+//     let a1_check = cs.check_in_range(a1_var, 8)?;
+//     // let a2_check = cs.check_in_range(a2_var, 8)?;
+//     // let a3_check = cs.check_in_range(a3_var, 8)?;
+//     // let a4_check = cs.check_in_range(a4_var, 8)?;
 
-    Ok(())
-}
+//     // check a = a1 + a2 + a3 + a4
+//     let wires = [a1_var, a2_var, a3_var, a4_var];
+//     let coeffs = [F::one(); 4];
+//     let a_rec = cs.lc(&wires, &coeffs)?;
+//     let eq_check = cs.check_equal(*a, a_rec)?;
+
+//     // // return a1_check and a2_check ... and eq_check
+//     // let res = cs.logic_and_all([a1_check, a2_check, a3_check, a4_check,
+// eq_check].as_ref())?;     let res = eq_check;
+
+//     #[cfg(feature = "print-trace")]
+//     println!(
+//         "is less then 1024: {};  total {}",
+//         cs.num_gates() - cs_count,
+//         cs.num_gates()
+//     );
+//     Ok(res)
+// }
+
+// // compute the l2 norm of polynomial a where a's coefficients
+// // are positive between [0, 12289).
+// // We need to firstly lift it to [-6144, 6144) and then
+// // compute the norm.
+// pub fn l2_norm_var<F: PrimeField>(
+//     cs: &mut PlonkCircuit<F>,
+//     a: &[Variable],
+// ) -> Result<Variable, PlonkError> {
+//     // let mut res = FpVar::<F>::conditionally_select(
+//     //     &is_less_than_6144(cs.clone(), &input[0])?,
+//     //     &input[0],
+//     //     &(modulus_var - &input[0]),
+//     // )?;
+//     // res = &res * &res;
+//     // for e in input.iter().skip(1) {
+//     //     let tmp = FpVar::<F>::conditionally_select(
+//     //         &is_less_than_6144(cs.clone(), e)?,
+//     //         e,
+//     //         &(modulus_var - e),
+//     //     )?;
+//     //     res += &tmp * &tmp
+//     // }
+//     todo!()
+//     // Ok(res)
+// }
+
+// pub fn enforce_less_than_norm_bound<F: PrimeField>(
+//     cs: &mut PlonkCircuit<F>,
+//     a: &Variable,
+// ) -> Result<(), PlonkError> {
+//     #[cfg(feature = "falcon-512")]
+//     enforce_less_than_norm_bound_512(cs, a)?;
+//     #[cfg(feature = "falcon-1024")]
+//     enforce_less_than_norm_bound_1024(cs, a)?;
+
+//     Ok(())
+// }
+
+// /// Constraint that the witness of a is smaller than 34034726
+// /// Cost: XX constraints.
+// /// (This improves the range proof of 1264 constraints as in Arkworks.)
+// #[cfg(feature = "falcon-1024")]
+// fn enforce_less_than_norm_bound_1024<F: PrimeField>(
+//     cs: &mut PlonkCircuit<F>,
+//     a: &Variable,
+// ) -> Result<(), PlonkError> {
+//     // 34034726 = 2 * (2^8)^3 + 7 * (2^8)^2 + 84 * 2^8 + 38
+
+//     Ok(())
+// }
 
 #[cfg(test)]
 mod tests {
@@ -220,6 +281,63 @@ mod tests {
         }
         Ok(())
     }
+
+    // macro_rules! is_leq_1020 {
+    //     ($value: expr, $satisfied: expr) => {
+    //         let mut cs = PlonkCircuit::new_ultra_plonk(8);
+    //         let a = Fq::from($value);
+    //         let a_var = cs.create_variable(a)?;
+
+    //         let res = is_less_than_1020(&mut cs, &a_var).unwrap();
+    //         assert_eq!(cs.witness(res)?, Fq::from($satisfied as u64));
+
+    //         // println!(
+    //         //     "number of variables {} {} and constraints {}\n",
+    //         //     cs.num_instance_variables(),
+    //         //     cs.num_witness_variables(),
+    //         //     cs.num_constraints(),
+    //         // );
+    //     };
+    // }
+    // #[test]
+    // fn test_is_leq_1020() -> Result<(), PlonkError> {
+    //     // =======================
+    //     // good path
+    //     // =======================
+    //     // the meaning of life
+    //     is_leq_1020!(42, true);
+
+    //     // edge case: 0
+    //     is_leq_1020!(0, true);
+
+    //     // edge case: 1019
+    //     is_leq_1020!(1019, true);
+
+    //     // edge case: 1020
+    //     is_leq_1020!(1020, true);
+
+    //     // =======================
+    //     // bad path
+    //     // =======================
+    //     // edge case: 1021
+    //     is_leq_1020!(1021, false);
+
+    //     // edge case: 1022
+    //     is_leq_1020!(1022, false);
+
+    //     // edge case: 12289
+    //     is_leq_1020!(MODULUS, false);
+
+    //     // =======================
+    //     // random path
+    //     // =======================
+    //     let mut rng = test_rng();
+    //     for _ in 0..REPEAT {
+    //         let t = rng.gen_range(0..2048) as u64;
+    //         is_leq_1020!(t, t <= 1020);
+    //     }
+    //     Ok(())
+    // }
 
     macro_rules! enforce_less_than_q {
         ($value: expr, $satisfied: expr) => {

@@ -5,8 +5,6 @@ use jf_plonk::{
 };
 use num_bigint::BigUint;
 
-use super::enforce_less_than_q;
-
 /// Generate the variable b = a mod 12289;
 /// Cost: 76 constraints
 pub fn mod_q<F: PrimeField>(
@@ -29,13 +27,11 @@ pub fn mod_q<F: PrimeField>(
 
     // rebuild the field elements
     let a_val = cs.witness(*a)?;
-
     let a_int: BigUint = a_val.into();
 
     let modulus_int: BigUint = F::from(modulus).into();
     let t_int = &a_int / &modulus_int;
-    let b_int = &a_int % &modulus_int;
-
+    let b_int = &a_int - &modulus_int * &t_int;
     let t_val = F::from(t_int);
     let b_val = F::from(b_int);
 
@@ -43,13 +39,13 @@ pub fn mod_q<F: PrimeField>(
     let t_var = cs.create_variable(t_val)?;
     let b_var = cs.create_variable(b_val)?;
 
-    // (1) a - t * 12289 = c
-    let wires = [*a, t_var, 0, 0, b_var];
-    let coeffs = [F::one(), -F::from(modulus), F::zero(), F::zero()];
+    // (1) a  = b + t * 12289
+    let wires = [b_var, t_var, 0, 0, *a];
+    let coeffs = [F::one(), F::from(modulus), F::zero(), F::zero()];
     cs.lc_gate(&wires, &coeffs)?;
 
-    // (2) c < 12289
-    enforce_less_than_q(cs, &b_var)?;
+    // // (2) b < 12289
+    // deferred to the caller
 
     #[cfg(feature = "print-trace")]
     println!(
