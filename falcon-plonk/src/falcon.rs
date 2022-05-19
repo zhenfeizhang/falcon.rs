@@ -1,3 +1,4 @@
+use crate::poly::{enforce_leq_765, mod_q, DualPolyVar, NTTPolyVar};
 use ark_ff::PrimeField;
 use falcon_rust::{
     DualPolynomial, NTTPolynomial, Polynomial, PublicKey, Signature, LOG_N, MODULUS, N,
@@ -6,7 +7,6 @@ use jf_plonk::{
     circuit::{Circuit, PlonkCircuit},
     errors::PlonkError,
 };
-use crate::poly::{enforce_leq_765,  mod_q, DualPolyVar, NTTPolyVar};
 
 #[derive(Clone, Debug)]
 pub struct FalconNTTVerificationWitness {
@@ -19,7 +19,6 @@ impl FalconNTTVerificationWitness {
     pub fn build_witness(pk: PublicKey, msg: Vec<u8>, sig: Signature) -> Self {
         Self { pk, msg, sig }
     }
-
 
     /// Falcon verification circuit. TOTAL cost: 50178
     pub fn verification_circuit<F: PrimeField>(
@@ -58,7 +57,7 @@ impl FalconNTTVerificationWitness {
         //  a private input to the circuit; a range proof will be done later
         let sig_dual_poly_vars = DualPolyVar::<F>::alloc_vars(cs, &sig_dual_poly)?;
         let sig_poly_vars = sig_dual_poly_vars.to_poly_var(cs)?;
-        
+
         // pk, in NTT domain
         //  a public input to the circuit; do not need range proof
         let pk_ntt_vars = NTTPolyVar::<F>::alloc_public_vars(cs, &pk_ntt)?;

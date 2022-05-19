@@ -1,8 +1,11 @@
 use ark_ff::PrimeField;
+use falcon_rust::N;
 use jf_plonk::{
     circuit::{Circuit, PlonkCircuit, Variable},
     errors::PlonkError,
 };
+
+use super::DualPolyVar;
 
 /// Constraint that the witness of a is smaller than 12289
 /// Cost: 75 constraints.
@@ -161,31 +164,84 @@ pub fn enforce_leq_765<F: PrimeField>(
 //     Ok(res)
 // }
 
-// // compute the l2 norm of polynomial a where a's coefficients
-// // are positive between [0, 12289).
-// // We need to firstly lift it to [-6144, 6144) and then
-// // compute the norm.
-// pub fn l2_norm_var<F: PrimeField>(
-//     cs: &mut PlonkCircuit<F>,
-//     a: &[Variable],
-// ) -> Result<Variable, PlonkError> {
-//     // let mut res = FpVar::<F>::conditionally_select(
-//     //     &is_less_than_6144(cs.clone(), &input[0])?,
-//     //     &input[0],
-//     //     &(modulus_var - &input[0]),
-//     // )?;
-//     // res = &res * &res;
-//     // for e in input.iter().skip(1) {
-//     //     let tmp = FpVar::<F>::conditionally_select(
-//     //         &is_less_than_6144(cs.clone(), e)?,
-//     //         e,
-//     //         &(modulus_var - e),
-//     //     )?;
-//     //     res += &tmp * &tmp
-//     // }
-//     todo!()
-//     // Ok(res)
-// }
+// compute the l2 norm of polynomial a where a's coefficients
+// are positive between [0, 12289).
+// This is applied over the `DualPolynomial` so we don't really
+// need to care for the signs.
+pub fn l2_norm_var<F: PrimeField>(
+    cs: &mut PlonkCircuit<F>,
+    u: &DualPolyVar<F>,
+    v: &DualPolyVar<F>,
+) -> Result<Variable, PlonkError> {
+    let mut t = vec![];
+    for i in 0..N / 2 {
+        let coeffs = [F::one(), F::one()];
+
+        // t1 = u.pos[2i]^2 + u.pos[2i+1]^2
+        {
+            let wires = [
+                u.pos.coeff()[2 * i],
+                u.pos.coeff()[2 * i],
+                u.pos.coeff()[2 * i + 1],
+                u.pos.coeff()[2 * i + 1],
+            ];
+            let t1 = cs.mul_add(&wires, &coeffs)?;
+            t.push(t1);
+        }
+
+        // t2 = u.neg[2i]^2 + u.neg[2i+1]^2
+        {
+            let wires = [
+                u.neg.coeff()[2 * i],
+                u.neg.coeff()[2 * i],
+                u.neg.coeff()[2 * i + 1],
+                u.neg.coeff()[2 * i + 1],
+            ];
+            let t2 = cs.mul_add(&wires, &coeffs)?;
+            t.push(t2);
+        }
+
+        // t3 = v.pos[2i]^2 + v.pos[2i+1]^2
+        {
+            let wires = [
+                v.pos.coeff()[2 * i],
+                v.pos.coeff()[2 * i],
+                v.pos.coeff()[2 * i + 1],
+                v.pos.coeff()[2 * i + 1],
+            ];
+            let t3 = cs.mul_add(&wires, &coeffs)?;
+            t.push(t3);
+        }
+
+        // t4 = v.neg[2i]^2 + v.neg[2i+1]^2
+        {
+            let wires = [
+                v.neg.coeff()[2 * i],
+                v.neg.coeff()[2 * i],
+                v.neg.coeff()[2 * i + 1],
+                v.neg.coeff()[2 * i + 1],
+            ];
+            let t4 = cs.mul_add(&wires, &coeffs)?;
+            t.push(t4);
+        }
+    }
+
+    let wires = [t[0], t[1], t[2], t[3]];
+    let coeffs = [F::one(), F::one(), F::one(), F::one()];
+    let mut res = cs.lc(&wires, &coeffs)?;
+
+    for e in t[4..].chunks(3) {
+        let wires = if e.len() == 3 {
+            [res, e[0], e[1], e[2]]
+        } else {
+            [res, e[0], cs.zero(), cs.zero()]
+        };
+
+        res = cs.lc(&wires, &coeffs)?;
+    }
+
+    Ok(res)
+}
 
 // pub fn enforce_less_than_norm_bound<F: PrimeField>(
 //     cs: &mut PlonkCircuit<F>,
@@ -216,8 +272,9 @@ pub fn enforce_leq_765<F: PrimeField>(
 mod tests {
     use super::*;
     use ark_ed_on_bls12_381::fq::Fq;
+    use ark_ff::Zero;
     use ark_std::{rand::Rng, test_rng};
-    use falcon_rust::MODULUS;
+    use falcon_rust::{DualPolynomial, Polynomial, MODULUS};
 
     const REPEAT: usize = 100;
 
@@ -397,6 +454,47 @@ mod tests {
             let t = rng.gen_range(0..1 << 14) as u64;
             enforce_less_than_q!(t, t < MODULUS as u64);
         }
+        Ok(())
+    }
+
+    #[test]
+    fn test_l2_norm() -> Result<(), PlonkError> {
+        let mut rng = test_rng();
+
+        let mut cs = PlonkCircuit::<Fq>::new_ultra_plonk(8);
+
+        let u = Polynomial::rand(&mut rng);
+        let v = Polynomial::rand(&mut rng);
+
+        let dual_u = DualPolynomial::from(&u);
+        let dual_v = DualPolynomial::from(&v);
+
+        let u_var = DualPolyVar::alloc_vars(&mut cs, &dual_u)?;
+        let v_var = DualPolyVar::alloc_vars(&mut cs, &dual_v)?;
+
+        let norm_var = l2_norm_var(&mut cs, &u_var, &v_var)?;
+        let norm = cs.witness(norm_var)?;
+
+        let mut norm_clear = Fq::zero();
+        for &e in dual_u.pos.coeff().iter() {
+            let tmp = Fq::from(e);
+            norm_clear += tmp * tmp
+        }
+        for &e in dual_u.neg.coeff().iter() {
+            let tmp = Fq::from(e);
+            norm_clear += tmp * tmp
+        }
+        for &e in dual_v.pos.coeff().iter() {
+            let tmp = Fq::from(e);
+            norm_clear += tmp * tmp
+        }
+        for &e in dual_v.neg.coeff().iter() {
+            let tmp = Fq::from(e);
+            norm_clear += tmp * tmp
+        }
+
+        assert_eq!(norm, norm_clear);
+
         Ok(())
     }
 }

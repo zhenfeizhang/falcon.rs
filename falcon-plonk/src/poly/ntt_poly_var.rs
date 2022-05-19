@@ -115,7 +115,7 @@ impl<F: PrimeField> NTTPolyVar<F> {
             t = ht;
         }
 
-        // perform a final mod reduction 
+        // perform a final mod reduction
         // Defer the range check of the output to caller
         for e in output.iter_mut() {
             *e = mod_q(cs, e, MODULUS)?;
