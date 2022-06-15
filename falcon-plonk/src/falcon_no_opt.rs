@@ -81,8 +81,8 @@ impl FalconNTTVerificationWitness {
         // NTT representation of the polynomial
         //  sig_ntt_vars = ntt_circuit(sig_vars)
         //  v_ntt_vars = ntt_circuit(v_vars)
-        let sig_ntt_vars = NTTPolyVar::ntt_circuit(cs, &sig_poly_vars, &const_q_power)?;
-        let v_ntt_vars = NTTPolyVar::ntt_circuit(cs, &v_poly_vars, &const_q_power)?;
+        let sig_ntt_vars = NTTPolyVar::ntt_circuit_full(cs, &sig_poly_vars, &const_q_power)?;
+        let v_ntt_vars = NTTPolyVar::ntt_circuit_full(cs, &v_poly_vars, &const_q_power)?;
         // second, prove the equation holds in the ntt domain
         for i in 0..N {
             // if i < 5 {
@@ -123,7 +123,7 @@ impl FalconNTTVerificationWitness {
         for e in v_dual_poly_vars.neg.coeff.iter() {
             enforce_leq_765(cs, e)?;
         }
-
+        println!("norm: {} {}", sig_poly.infinity_norm(), v.infinity_norm());
         #[cfg(feature = "print-trace")]
         println!(
             "falcon verification circuit {};  total {}",
@@ -143,9 +143,8 @@ mod tests {
 
     const REPEAT: usize = 10;
 
-    #[test]
-    fn test_ntt_verification_plonk() -> Result<(), PlonkError> {
-        for _ in 0..REPEAT {
+    fn gen_sig_for_testing() -> (KeyPair, Signature) {
+        loop {
             let keypair = KeyPair::keygen();
             let message = "testing message".as_bytes();
             let sig = keypair
@@ -154,6 +153,27 @@ mod tests {
 
             assert!(keypair.public_key.verify(message.as_ref(), &sig));
             assert!(keypair.public_key.verify_rust(message.as_ref(), &sig));
+
+            let pk_poly: Polynomial = (&keypair.public_key).into();
+            let sig_poly: Polynomial = (&sig).into();
+            let hm = Polynomial::from_hash_of_message(message.as_ref(), sig.nonce());
+
+            // compute v = hm - uh and lift it to positives
+            let uh = sig_poly * pk_poly;
+            let v = hm - uh;
+            if v.infinity_norm() > 765 || sig_poly.infinity_norm() > 765 {
+                continue;
+            }
+
+            return (keypair, sig);
+        }
+    }
+
+    #[test]
+    fn test_non_opt_verification() -> Result<(), PlonkError> {
+        let message = "testing message".as_bytes();
+        for _ in 0..REPEAT {
+            let (keypair, sig) = gen_sig_for_testing();
 
             let mut cs = PlonkCircuit::<Fq>::new_ultra_plonk(8);
 
@@ -185,8 +205,8 @@ mod tests {
             for &e in hm_ntt.coeff() {
                 public_inputs.push(Fq::from(e));
             }
-
             println!("{:?}", cs.check_circuit_satisfiability(&public_inputs));
+            println!("optimized falcon cs count: {}", cs.num_gates());
             assert!(cs.check_circuit_satisfiability(&public_inputs).is_ok());
         }
         Ok(())

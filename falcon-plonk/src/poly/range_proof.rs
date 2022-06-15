@@ -173,6 +173,9 @@ pub fn l2_norm_var<F: PrimeField>(
     u: &DualPolyVar<F>,
     v: &DualPolyVar<F>,
 ) -> Result<Variable, PlonkError> {
+    #[cfg(feature = "print-trace")]
+    let cs_count = cs.num_gates();
+
     let mut t = vec![];
     for i in 0..N / 2 {
         let coeffs = [F::one(), F::one()];
@@ -239,6 +242,13 @@ pub fn l2_norm_var<F: PrimeField>(
 
         res = cs.lc(&wires, &coeffs)?;
     }
+
+    #[cfg(feature = "print-trace")]
+    println!(
+        "enforce leq 765 {};  total {}",
+        cs.num_gates() - cs_count,
+        cs.num_gates()
+    );
 
     Ok(res)
 }
@@ -461,40 +471,41 @@ mod tests {
     fn test_l2_norm() -> Result<(), PlonkError> {
         let mut rng = test_rng();
 
-        let mut cs = PlonkCircuit::<Fq>::new_ultra_plonk(8);
+        for _ in 0..REPEAT {
+            let mut cs = PlonkCircuit::<Fq>::new_ultra_plonk(8);
 
-        let u = Polynomial::rand(&mut rng);
-        let v = Polynomial::rand(&mut rng);
+            let u = Polynomial::rand(&mut rng);
+            let v = Polynomial::rand(&mut rng);
 
-        let dual_u = DualPolynomial::from(&u);
-        let dual_v = DualPolynomial::from(&v);
+            let dual_u = DualPolynomial::from(&u);
+            let dual_v = DualPolynomial::from(&v);
 
-        let u_var = DualPolyVar::alloc_vars(&mut cs, &dual_u)?;
-        let v_var = DualPolyVar::alloc_vars(&mut cs, &dual_v)?;
+            let u_var = DualPolyVar::alloc_vars(&mut cs, &dual_u)?;
+            let v_var = DualPolyVar::alloc_vars(&mut cs, &dual_v)?;
 
-        let norm_var = l2_norm_var(&mut cs, &u_var, &v_var)?;
-        let norm = cs.witness(norm_var)?;
+            let norm_var = l2_norm_var(&mut cs, &u_var, &v_var)?;
+            let norm = cs.witness(norm_var)?;
 
-        let mut norm_clear = Fq::zero();
-        for &e in dual_u.pos.coeff().iter() {
-            let tmp = Fq::from(e);
-            norm_clear += tmp * tmp
+            let mut norm_clear = Fq::zero();
+            for &e in dual_u.pos.coeff().iter() {
+                let tmp = Fq::from(e);
+                norm_clear += tmp * tmp
+            }
+            for &e in dual_u.neg.coeff().iter() {
+                let tmp = Fq::from(e);
+                norm_clear += tmp * tmp
+            }
+            for &e in dual_v.pos.coeff().iter() {
+                let tmp = Fq::from(e);
+                norm_clear += tmp * tmp
+            }
+            for &e in dual_v.neg.coeff().iter() {
+                let tmp = Fq::from(e);
+                norm_clear += tmp * tmp
+            }
+
+            assert_eq!(norm, norm_clear);
         }
-        for &e in dual_u.neg.coeff().iter() {
-            let tmp = Fq::from(e);
-            norm_clear += tmp * tmp
-        }
-        for &e in dual_v.pos.coeff().iter() {
-            let tmp = Fq::from(e);
-            norm_clear += tmp * tmp
-        }
-        for &e in dual_v.neg.coeff().iter() {
-            let tmp = Fq::from(e);
-            norm_clear += tmp * tmp
-        }
-
-        assert_eq!(norm, norm_clear);
-
         Ok(())
     }
 }

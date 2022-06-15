@@ -1,3 +1,5 @@
+use crate::poly::enforce_less_than_q;
+
 use super::{mod_q, NTTPolyVar, PolyVar};
 use ark_ff::PrimeField;
 use falcon_rust::{NTTPolynomial, LOG_N, MODULUS, N, NTT_TABLE};
@@ -57,7 +59,7 @@ impl<F: PrimeField> NTTPolyVar<F> {
     /// - input: the wires of the input polynomial
     /// - power_of_q_s: the [q, 2*q^2, 4 * q^3, ..., 2^9 * q^10] constant wires
     /// - param: the forward NTT table in wire format
-    pub fn ntt_circuit(
+    pub fn ntt_circuit_defer_mod_q(
         cs: &mut PlonkCircuit<F>,
         input: &PolyVar<F>,
         power_of_q_s: &[F],
@@ -132,6 +134,36 @@ impl<F: PrimeField> NTTPolyVar<F> {
             phantom: PhantomData::default(),
         })
     }
+
+    /// The circuit to convert a poly into its NTT form
+    /// Cost 11266 constraints.
+    /// Inputs:
+    /// - cs: constraint system
+    /// - input: the wires of the input polynomial
+    /// - power_of_q_s: the [q, 2*q^2, 4 * q^3, ..., 2^9 * q^10] constant wires
+    /// - param: the forward NTT table in wire format
+    pub fn ntt_circuit_full(
+        cs: &mut PlonkCircuit<F>,
+        input: &PolyVar<F>,
+        power_of_q_s: &[F],
+        // param: &[Variable],
+    ) -> Result<Self, PlonkError> {
+        #[cfg(feature = "print-trace")]
+        let cs_count = cs.num_gates();
+
+        let ntt_poly_var = Self::ntt_circuit_defer_mod_q(cs, input, power_of_q_s)?;
+        for e in ntt_poly_var.coeff() {
+            enforce_less_than_q(cs, e)?;
+        }
+
+        #[cfg(feature = "print-trace")]
+        println!(
+            "NTT {}  total {}",
+            cs.num_gates() - cs_count,
+            cs.num_gates()
+        );
+        Ok(ntt_poly_var)
+    }
 }
 
 #[cfg(test)]
@@ -158,7 +190,8 @@ mod tests {
 
             let output = NTTPolynomial::from(&poly);
 
-            let output_var = NTTPolyVar::ntt_circuit(&mut cs, &poly_var, &const_power_q)?;
+            let output_var =
+                NTTPolyVar::ntt_circuit_defer_mod_q(&mut cs, &poly_var, &const_power_q)?;
 
             for i in 0..N {
                 assert_eq!(
