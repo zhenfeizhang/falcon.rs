@@ -107,6 +107,29 @@ impl<F: PrimeField> NTTPolyVar<F> {
         const_vars: &[FpVar<F>],
         param: &[FpVar<F>],
     ) -> Result<Self, SynthesisError> {
+        let mut output = Self::ntt_circuit_defer_range_check(input, const_vars, param)?;
+
+        // perform a final mod reduction to make the
+        // output into the right range
+        // this is the only place that we need non-native circuits
+        for e in output.0.iter_mut() {
+            *e = mod_q(cs.clone(), e, &const_vars[0])?;
+        }
+
+        Ok(output)
+    }
+
+
+    /// The circuit to convert a poly into its NTT form
+    /// Inputs:
+    /// - input: the wires of the input polynomial
+    /// - const_vars: the [q, 2*q^2, 4 * q^3, ..., 2^9 * q^10] constant wires
+    /// - param: the forward NTT table in wire format
+    pub fn ntt_circuit_defer_range_check(
+        input: &PolyVar<F>,
+        const_vars: &[FpVar<F>],
+        param: &[FpVar<F>],
+    ) -> Result<Self, SynthesisError> {
         if input.coeff().len() != N {
             panic!("input length {} is not N", input.coeff().len())
         }
@@ -146,13 +169,6 @@ impl<F: PrimeField> NTTPolyVar<F> {
                 j1 += t
             }
             t = ht;
-        }
-
-        // perform a final mod reduction to make the
-        // output into the right range
-        // this is the only place that we need non-native circuits
-        for e in output.iter_mut() {
-            *e = mod_q(cs.clone(), e, &const_vars[0])?;
         }
 
         Ok(NTTPolyVar(output.to_vec()))

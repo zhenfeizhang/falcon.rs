@@ -161,6 +161,23 @@ impl Polynomial {
     pub fn coeff(&self) -> &[u16; N] {
         &self.0
     }
+
+    /// L infinity norm
+    pub fn infinity_norm(&self) -> u64 {
+        let mut res = 0u64;
+        for &e in self.coeff() {
+            let t = if e > MODULUS_MINUS_1_OVER_TWO {
+                MODULUS - e
+            } else {
+                e
+            } as u64;
+
+            if res < t {
+                res = t
+            }
+        }
+        res
+    }
 }
 
 #[cfg(test)]
