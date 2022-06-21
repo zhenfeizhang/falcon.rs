@@ -5,7 +5,6 @@ use jf_plonk::{
     errors::PlonkError,
 };
 use std::marker::PhantomData;
-
 use super::PolyVar;
 
 impl<F: PrimeField> PolyVar<F> {

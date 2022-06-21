@@ -1,5 +1,5 @@
 #![allow(dead_code)]
 
-mod falcon_no_opt;
-mod falcon_opt;
-mod poly;
+pub mod falcon_no_opt;
+pub mod falcon_opt;
+pub mod poly;
