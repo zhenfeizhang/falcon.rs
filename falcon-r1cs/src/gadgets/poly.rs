@@ -119,7 +119,6 @@ impl<F: PrimeField> NTTPolyVar<F> {
         Ok(output)
     }
 
-
     /// The circuit to convert a poly into its NTT form
     /// Inputs:
     /// - input: the wires of the input polynomial

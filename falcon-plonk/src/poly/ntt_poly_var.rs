@@ -146,7 +146,6 @@ impl<F: PrimeField> NTTPolyVar<F> {
         cs: &mut PlonkCircuit<F>,
         input: &PolyVar<F>,
         power_of_q_s: &[F],
-        // param: &[Variable],
     ) -> Result<Self, PlonkError> {
         #[cfg(feature = "print-trace")]
         let cs_count = cs.num_gates();
@@ -163,6 +162,19 @@ impl<F: PrimeField> NTTPolyVar<F> {
             cs.num_gates()
         );
         Ok(ntt_poly_var)
+    }
+
+    /// Compute multiplication between two polynomials, defer the mod q reduction.
+    pub fn mul_defer_mod_q_circuit(
+        cs: &mut PlonkCircuit<F>,
+        a: &Self,
+        b: &Self,
+    ) -> Result<Self, PlonkError> {
+        let mut res = Vec::new();
+        for (&ai, &bi) in a.coeff().iter().zip(b.coeff().iter()) {
+            res.push(cs.mul(ai, bi)?);
+        }
+        Ok(Self::new(res))
     }
 }
 

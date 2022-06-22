@@ -1,3 +1,4 @@
+use super::PolyVar;
 use ark_ff::PrimeField;
 use falcon_rust::Polynomial;
 use jf_plonk::{
@@ -5,7 +6,6 @@ use jf_plonk::{
     errors::PlonkError,
 };
 use std::marker::PhantomData;
-use super::PolyVar;
 
 impl<F: PrimeField> PolyVar<F> {
     /// create a PolyVar from variables
@@ -48,5 +48,18 @@ impl<F: PrimeField> PolyVar<F> {
     /// Access the coefficients
     pub fn coeff(&self) -> &[Variable] {
         &self.coeff
+    }
+
+    /// Compute multiplication between two polynomials, defer the mod q reduction.
+    pub fn mul_defer_mod_q_circuit(
+        cs: &mut PlonkCircuit<F>,
+        a: &Self,
+        b: &Self,
+    ) -> Result<Self, PlonkError> {
+        let mut res = Vec::new();
+        for (&ai, &bi) in a.coeff().iter().zip(b.coeff().iter()) {
+            res.push(cs.mul(ai, bi)?);
+        }
+        Ok(Self::new(res))
     }
 }
